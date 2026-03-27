@@ -1,0 +1,41 @@
+### PNWC SECURITY CONSOLE (LOVELACE YAML)
+
+type: vertical-stack
+cards:
+  - type: custom:mushroom-title-card
+    title: 🚨 PNWC Security Pro
+    subtitle: GPS + Cellular Failover Enabled
+
+  - type: map
+    entities:
+      - entity: device_tracker.car_security_upgraded
+    hours_to_show: 24
+    default_zoom: 15
+    title: 📍 Vehicle Live Location
+
+  - type: horizontal-stack
+    cards:
+      - type: custom:mushroom-entity-card
+        entity: input_boolean.car_alarm_armed
+        name: Arm System
+        icon_color: red
+        tap_action:
+          action: toggle
+      - type: custom:mushroom-entity-card
+        entity: input_boolean.car_alarm_maintenance
+        name: Maintenance
+        icon_color: orange
+        tap_action:
+          action: toggle
+
+  - type: custom:mushroom-chips-card
+    chips:
+      - type: entity
+        entity: sensor.car_security_upgraded_18650_battery_voltage
+        icon: mdi:battery
+      - type: entity
+        entity: sensor.car_security_upgraded_gps_signal
+        icon: mdi:satellite-variant
+      - type: entity
+        entity: binary_sensor.car_security_upgraded_car_power_detected
+        name: Charging
