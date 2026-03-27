@@ -1,6 +1,7 @@
 # ═══════════════════════════════════════════════════════════════════
 # PNWC CAR SECURITY — UPGRADED CELLULAR/GPS EDITION
-# Board: LILYGO T-SIM7670G-S3
+# Hardware: LILYGO T-SIM7670G-S3 (ESP32-S3 + LTE + GPS)
+# Logic: WiFi (Primary) + LTE SMS (Failover) + GPS + Radar + SD Log
 # ═══════════════════════════════════════════════════════════════════
 
 esphome:
@@ -14,14 +15,18 @@ esphome:
 
 esp32:
   board: esp32-s3-devkitc-1
-  framework: {type: arduino}
+  framework:
+    type: arduino
 
-api:
+# --- Connectivity ---
+api: # Connects to Home Assistant
 ota:
 wifi:
   networks:
-    - ssid: "Your_WiFi"
-      password: "Your_Password"
+    - ssid: "Your_WiFi_Name"
+      password: "Your_WiFi_Password"
+  ap:
+    ssid: "Car-Security-Hotspot"
 
 # --- Power & Modem Hardware ---
 i2c:
@@ -68,17 +73,27 @@ sim7000:
   id: modem
   uart_id: modem_uart
   pwr_key_pin: GPIO13
-  apn: "hologram" 
+  apn: "hologram" # Update to your specific IoT SIM APN
   gps:
-    latitude: { id: car_lat }
-    longitude: { id: car_lon }
+    latitude: 
+      name: "Car Latitude"
+      id: car_lat
+    longitude: 
+      name: "Car Longitude"
+      id: car_lon
 
-# --- Intelligent Logic ---
+# --- Management Entities ---
+button:
+  - platform: restart
+    name: "Restart Car Tracker"
+    id: restart_s3
+
+# --- Intelligent Alert Logic ---
 script:
   - id: stealth_mode
     then:
-      - sim7000.send_at_command: "AT+CNETLIGHT=0"
-      - logger.log: "🌑 Stealth Mode Active"
+      - sim7000.send_at_command: "AT+CNETLIGHT=0" # Disables modem status LED
+      - logger.log: "🌑 Stealth Mode Active (Visuals Disabled)"
 
   - id: alert_logic
     mode: single
@@ -87,15 +102,15 @@ script:
           condition:
             wifi.connected:
           then:
-            - logger.log: "WiFi Connected: Signaling Home Assistant API"
+            - logger.log: "WiFi OK: Alerting Home Assistant via API"
           else:
-            - logger.log: "WiFi Out/Jammed: Activating LTE Failover"
+            - logger.log: "WiFi JAMMED/OUT OF RANGE: Sending LTE SMS"
             - sim7000.send_at_command: "AT+CGNSPWR=1"
-            - delay: 15s
+            - delay: 15s # Wait for GPS stabilization
             - sim7000.send_sms:
-                number: "+15551234567"
+                number: "+15550000000" # UPDATE TO YOUR PHONE NUMBER
                 message: !lambda |-
-                  return "🚨 PNWC ALARM: Intrusion while WiFi Offline. GPS: http://maps.google.com/maps?q=" 
+                  return "🚨 PNWC ALARM: WiFi Lost! Intrusion Detected. GPS: http://maps.google.com/maps?q=" 
                          + to_string(id(car_lat).state) + "," + to_string(id(car_lon).state);
 
 sensor:
@@ -114,8 +129,8 @@ sensor:
       - sim7000.send_at_command: "AT+CGNSPWR=1"
       - delay: 60s
       - sim7000.send_sms:
-          number: "+15551234567"
-          message: "🔋 BATT CRITICAL. Final Location pinged to Mesh/API."
+          number: "+15550000000"
+          message: "🔋 BATT CRITICAL. Sending final GPS coordinates before shutdown."
       - deep_sleep.enter: shutdown_sleep
 
 deep_sleep:
