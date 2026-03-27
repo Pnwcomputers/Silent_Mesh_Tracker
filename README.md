@@ -21,7 +21,7 @@ A professional-grade, distributed vehicle security system. This project bridges 
 To build your own **ESP32 -> Home Assistant, Security System**, you will need the following components. These links represent the specific hardware used in the circuit designs.
 
 ### 🚗 Unit 1: Car Sensor (Presence & Vibration Sensor)
-* **ESP32 Microcontroller:** [LILYGO T-Display S3](https://a.co/d/0jiQC1WG) (Dual-core ESP32-S3 with 1.9" LCD)
+* **ESP32 Microcontroller:** [LILYGO T-Display S3](https://a.co/d/0gzxxSAu) (Dual-core ESP32-S3 with 1.9" LCD)
 * **Presence Sensor:** [LD2410C mmWave Radar](https://a.co/d/06LWMXAf) (Human presence detection)
 * **Vibration Sensor:** [SW-420 Motion Sensor](https://a.co/d/02E32HKW) (Shock/Vibration trigger)
 * **LiPo Battery:** [3.7V 2000mAh LiPo Battery](https://a.co/d/02E32HKW) (JST 1.25mm connector)
