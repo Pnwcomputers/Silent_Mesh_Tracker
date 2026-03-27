@@ -1,102 +1,55 @@
-# 🚨 Home Assistant ESP32-Based Distributed Car Alarm System
+# 🚨 ESP32 Car Security — Home Assistant Distributed Alarm (Sensor & Siren)
 
-A two-part security system: A battery-powered vibration sensor inside the vehicle and a high-decibel, mains-powered siren mounted to the house.
+![PNWC Car Alarm Project Header](./esp32alarm.png)
+
+A high-performance, distributed vehicle security system that bridges a battery-powered mobile sensor unit with a mains-powered house siren via Home Assistant and ESPHome.
 
 ---
 
 ## 🏗️ System Architecture
 
-1.  **The Trigger (Car Unit):** ESP32-S3 + SW-420 Sensor. Powered by LiPo. Sends "Vibration Detected" to HA via Wi-Fi.
-2.  **The Brain (Home Assistant):** Processes the signal and checks if the system is "Armed."
-3.  **The Alarm (House Unit):** ESP32-S3 + 5V Relay + 12V Siren. Plugged into a wall outlet. Triggered by HA.
+1.  **The Sensor (Car Unit):** A LILYGO T-Display S3 equipped with an **LD2410C Human Presence Radar** and an **SW-420 Vibration Sensor**. It uses deep sleep to conserve battery and wakes instantly on vibration to report to Home Assistant.
+2.  **The Brain (Home Assistant):** Processes logic, manages arm/disarm states, integrates with **Frigate NVR** for camera snapshots, and handles mobile notifications.
+3.  **The Alarm (House Unit):** A second LILYGO T-Display S3 that controls a **12V DC Siren** via a 5V Relay. It features a hardwired "Wall Kill" button for emergency silencing and disarming.
 
 ---
 
-## 🧱 Materials List
+## 📂 Repository Structure
 
-### 🚗 Unit 1: Car Sensor (Mobile)
-* **LILYGO T-Display-S3**: Microcontroller.
-* **SW-420 Vibration Sensor**: Detects movement/impact.
-* **3.7V 2000mAh/3000mAh LiPo**: Portable power.
-* **5V Charge/Discharge Module**: Manages battery and boosts to 5V.
-
-### 🏠 Unit 2: House Siren (Mains Powered)
-* **LILYGO T-Display-S3**: Microcontroller & Status Display.
-* **5V 1-Channel Relay Module**: (HiLetgo or similar with Optocoupler).
-* **12V DC Power Supply**: 2A "Wall Wart" adapter.
-* **12V DC Outdoor Siren**: 110dB+ high-decibel alarm.
-* **USB Power Block**: To power the ESP32.
+* `car_security_tdisplay_s3.yaml`: ESPHome config for the mobile sensor unit (Vibration + Radar + Battery Mgmt).
+* `house_siren_tdisplay_s3.yaml`: ESPHome config for the siren controller and status display.
+* `ha_automations.yaml`: The logic connecting the two units, including Frigate alerts and auto-arming.
+* `zigbee_kill_button.yaml`: Optional automation for remote Zigbee-based silencing.
 
 ---
 
-## 🔌 Wiring Diagrams
+## 🔌 Hardware & Wiring
 
-### House Siren Unit Wiring
+### 🏠 House Siren Unit (Unit 2)
+| Component | Pin / Connection |
+| :--- | :--- |
+| **Relay IN** | GPIO12 |
+| **Wall Kill Button** | GPIO13 ➔ GND |
+| **Siren Power** | 12V DC (Switched via Relay COM/NO) |
+| **Status Display** | Built-in ST7789 (SPI) |
 
-
-1.  **ESP32 to Relay:**
-    * **5V/VBUS Pin** ➔ Relay **VCC**
-    * **GND Pin** ➔ Relay **GND**
-    * **GPIO 12** ➔ Relay **IN**
-2.  **Relay to Siren Circuit:**
-    * 12V Adapter **(+)** ➔ Relay **COM** (Center Terminal)
-    * Relay **NO** (Normally Open) ➔ Siren **(+)**
-    * 12V Adapter **(-)** ➔ Siren **(-)** (Direct Connection)
-
----
-
-## 💻 ESPHome Configuration (House Unit)
-
-```yaml
-# Partial Config for the House Siren Display & Relay
-esphome:
-  name: house_siren
-
-display:
-  - platform: st7789v
-    # ... (Display timings for T-Display S3)
-    lambda: |-
-      if (id(siren_relay).state) {
-        it.fill(Color::RED);
-        it.print(160, 85, id(font_large), "!!! ALARM !!!");
-      } else {
-        it.fill(Color::BLACK);
-        it.print(160, 85, id(font_small), "SYSTEM READY");
-      }
-
-switch:
-  - platform: gpio
-    pin: 12
-    name: "House Siren Relay"
-    id: siren_relay
-```
+### 🚗 Car Sensor Unit (Unit 1)
+| Component | Pin / Connection |
+| :--- | :--- |
+| **SW-420 (Wake)** | GPIO1 |
+| **LD2410C TX/RX** | GPIO3 / GPIO2 |
+| **Battery ADC** | GPIO4 (via 100k/100k Divider) |
 
 ---
 
-## 🤖 Home Assistant Automation Logic
+## 🤖 Key Features
 
-```yaml
-alias: "Global Alarm: Car Vibration -> House Siren"
-trigger:
-  - platform: state
-    entity_id: binary_sensor.car_vibration_sensor
-    to: "on"
-condition:
-  - condition: state
-    entity_id: input_boolean.alarm_system_armed
-    state: "on"
-action:
-  - service: switch.turn_on
-    target:
-      entity_id: switch.house_siren_relay
-  - delay: "00:02:00"
-  - service: switch.turn_off
-    target:
-      entity_id: switch.house_siren_relay
-```
+* **Human Presence Radar:** Uses mmWave to distinguish between a cat jumping on the car (vibration only) and a person standing inside/near the vehicle (presence).
+* **Intelligent Power:** Car unit enters deep sleep if no presence is detected, waking only on physical disturbance.
+* **Visual Feedback:** The T-Display screens provide real-time status (RSSI, Uptime, Battery, and Alarm State).
+* **Hardwired Fail-safe:** A physical button wired to the house unit can kill the siren and disarm the system even if Home Assistant or Wi-Fi is lagging.
 
 ---
 
-## ⚠️ Technical Notes
-* **Safety:** Only switch the **12V DC** side with the relay. Do not attempt to switch 120V/240V AC unless you are an experienced electrician.
-* **Reliability:** The House Unit should have a static IP or a strong Wi-Fi connection to ensure it receives the "Turn On" command instantly from Home Assistant.
+## ⚠️ Safety Note
+The house siren unit switches **12V DC only**. Do not attempt to switch mains AC (120V/240V) directly with the hobbyist relay modules provided in this project.
