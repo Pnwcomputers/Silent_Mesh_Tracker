@@ -16,6 +16,32 @@ A professional-grade, distributed vehicle security system. This project bridges 
 
 ---
 
+## 🛒 Parts List & Shopping Links
+
+To build the **PNWC Distributed Alarm System**, you will need the following components. These links represent the specific hardware used in the verified circuit designs.
+
+### 🚗 Unit 1: Car Sensor (Mobile)
+* **Microcontroller:** [LILYGO T-Display S3](https://a.co/d/0jiQC1WG) (Dual-core ESP32-S3 with 1.9" LCD)
+* **Presence Sensor:** [LD2410C mmWave Radar](https://a.co/d/01kpnEA2) (Human presence detection)
+* **Vibration Sensor:** [SW-420 Motion Sensor](https://a.co/d/0evgHhJQ) (Shock/Vibration trigger)
+* **Battery:** [3.7V 2000mAh LiPo Battery](https://a.co/d/0hAgFQU7) (JST 1.25mm connector)
+
+### 🏠 Unit 2: House Siren (Mains Powered)
+* **Microcontroller:** [ESP32-WROOM-32 DevKit](https://a.co/d/0jhFe4JW) (Standard 30-pin version)
+* **Relay:** [5V One-Channel Relay Module](https://a.co/d/02h6VCBC) (Opto-isolated High/Low trigger)
+* **Siren:** [12V DC Wired Indoor/Outdoor Siren](https://a.co/d/05QD2nTd) (High-decibel output)
+* **Kill Switch:** [Momentary Push Button Switch](https://a.co/d/04kKf5Dm) (For the "Wall Kill" extension)
+
+### ⚡ Power & Wiring
+* **Siren Power:** [12V 2A DC Power Supply Adapter](https://a.co/d/06dbN13u) (Mains to 12V for the siren)
+
+---
+
+### 🛠️ Tooling Requirements
+* **Soldering:** Basic iron and solder for connecting sensors to pins.
+* **Wiring:** 22AWG hook-up wire or standard doorbell wire for the Wall Kill Button.
+* **Software:** Home Assistant instance with the **ESPHome** add-on installed.
+
 ## 📂 Repository Structure
 
 * `car_security_tdisplay_s3.yaml`: Sensor unit config (Vibration + Radar + Battery Mgmt).
