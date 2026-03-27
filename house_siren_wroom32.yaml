@@ -1,154 +1,48 @@
 # ═══════════════════════════════════════════════════════════════════
-# PNWC HOUSE SIREN UNIT (HEADLESS WROOM-32 VERSION)
-# Hardware: ESP32-WROOM-32 DevKit + 5V Relay Module + 12V DC Siren
-#           + Hardwired Wall Kill Button on GPIO14
+# PNWC CAR SECURITY — HOUSE SIREN UNIT
+# Hardware: ESP32-WROOM-32 + 5V Relay + 12V Siren
 # ═══════════════════════════════════════════════════════════════════
 
 esphome:
   name: house-siren
-  friendly_name: House Siren Unit
-  on_boot:
-    priority: 600
-    then:
-      - light.turn_on: status_led_blue
+  friendly_name: House Siren
 
 esp32:
   board: esp32dev
-  framework:
-    type: arduino # Arduino is usually more stable for basic WROOM tasks
-
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-  fast_connect: true
-
-logger:
-  level: INFO
 
 api:
-  encryption:
-    key: !secret api_encryption_key
-
 ota:
-  - platform: esphome
-    password: !secret ota_password
+wifi:
+  networks:
+    - ssid: "Your_WiFi_Name"
+      password: "Your_WiFi_Password"
 
-# ─────────────────────────────────────────
-# STATUS LED (Built-in Blue LED on GPIO2)
-# ─────────────────────────────────────────
-output:
-  - platform: ledc
-    pin: GPIO2
-    id: led_output
-
-light:
-  - platform: monochromatic
-    output: led_output
-    id: status_led_blue
-    name: "Siren Unit Status LED"
-    effects:
-      - pulse:
-          name: "Alarm Pulse"
-          transition_length: 0.5s
-          update_interval: 0.5s
-
-# ─────────────────────────────────────────
-# RELAY — GPIO13
-# Wiring: ESP32 5V/VIN -> Relay VCC | ESP32 GND -> Relay GND | GPIO13 -> Relay IN
-# ─────────────────────────────────────────
+# --- Hardware Output ---
 switch:
   - platform: gpio
     pin: GPIO13
-    id: siren_relay
     name: "Siren Relay"
-    restore_mode: ALWAYS_OFF
-    on_turn_on:
-      then:
-        - light.turn_on:
-            id: status_led_blue
-            effect: "Alarm Pulse"
-        - logger.log: "SIREN ACTIVATED"
-    on_turn_off:
-      then:
-        - light.turn_off: status_led_blue
-        - light.turn_on: status_led_blue # Back to solid on when cleared
-        - logger.log: "Siren deactivated"
+    id: siren_relay
+    inverted: false # Adjust based on your relay's high/low trigger
 
-  - platform: template
-    name: "Alarm Armed"
-    id: alarm_armed_switch
-    optimistic: true
-    restore_mode: RESTORE_DEFAULT_OFF
-    on_turn_off:
-      then:
-        - switch.turn_off: siren_relay
-
-# ─────────────────────────────────────────
-# BINARY SENSORS (Buttons)
-# ─────────────────────────────────────────
+# --- Physical "Wall Kill" Button ---
 binary_sensor:
-  - platform: status
-    name: "Siren Unit WiFi Connected"
-    id: wifi_connected
-
-  # ── Wall kill button — GPIO14 — Kills siren AND disarms ─────────
-  # Wiring: GPIO14 → momentary button → GND
   - platform: gpio
-    pin:
+    pin: 
       number: GPIO14
-      inverted: true
       mode: INPUT_PULLUP
+      inverted: true
     name: "Wall Kill Button"
-    id: btn_wall_kill
-    filters:
-      - delayed_on: 50ms
     on_press:
       then:
         - switch.turn_off: siren_relay
-        - switch.turn_off: alarm_armed_switch
-        - text_sensor.template.publish:
-            id: last_trigger
-            state: "Wall Button Kill"
-        - logger.log: "Alarm killed and disarmed via wall button"
+        - logger.log: "⚠️ SIREN KILLED MANUALLY VIA WALL BUTTON"
 
-# ─────────────────────────────────────────
-# SENSORS & TEXT
-# ─────────────────────────────────────────
-sensor:
-  - platform: uptime
-    name: "Siren Unit Uptime"
-    id: device_uptime
-    update_interval: 60s
-
-  - platform: wifi_signal
-    name: "Siren Unit WiFi RSSI"
-    update_interval: 60s
-
-text_sensor:
-  - platform: template
-    name: "Last Trigger Source"
-    id: last_trigger
-    lambda: 'return {"None"};'
-
-# ─────────────────────────────────────────
-# SCRIPTS
-# ─────────────────────────────────────────
+# --- Safety Script (Auto-Off) ---
 script:
-  # Called from HA automation when car sensor triggers
   - id: trigger_alarm
-    mode: single
+    mode: restart
     then:
-      - if:
-          condition:
-            switch.is_on: alarm_armed_switch
-          then:
-            - switch.turn_on: siren_relay
-            - delay: 60s
-            - if:
-                condition:
-                  switch.is_on: siren_relay
-                then:
-                  - switch.turn_off: siren_relay
-                  - text_sensor.template.publish:
-                      id: last_trigger
-                      state: "Auto Timeout 60s"
+      - switch.turn_on: siren_relay
+      - delay: 60s # Auto-shutoff to prevent burnout/noise complaints
+      - switch.turn_off: siren_relay
