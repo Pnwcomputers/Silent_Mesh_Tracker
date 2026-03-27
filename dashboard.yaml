@@ -1,23 +1,28 @@
-### PNWC SECURITY CONSOLE (LOVELACE YAML)
+# ═══════════════════════════════════════════════════════════════════
+# PNWC PRO SECURITY DASHBOARD
+# Includes: Live Map, Battery Health, & Remote Reset
+# ═══════════════════════════════════════════════════════════════════
 
 type: vertical-stack
 cards:
   - type: custom:mushroom-title-card
     title: 🚨 PNWC Security Pro
-    subtitle: GPS + Cellular Failover Enabled
+    subtitle: System Status: Online (GPS Locked)
 
+  # --- Live Tracking Map ---
   - type: map
     entities:
       - entity: device_tracker.car_security_upgraded
     hours_to_show: 24
     default_zoom: 15
-    title: 📍 Vehicle Live Location
+    aspect_ratio: 16:9
 
+  # --- Primary Controls ---
   - type: horizontal-stack
     cards:
       - type: custom:mushroom-entity-card
         entity: input_boolean.car_alarm_armed
-        name: Arm System
+        name: Alarm System
         icon_color: red
         tap_action:
           action: toggle
@@ -28,6 +33,7 @@ cards:
         tap_action:
           action: toggle
 
+  # --- System Health Chips ---
   - type: custom:mushroom-chips-card
     chips:
       - type: entity
@@ -40,6 +46,7 @@ cards:
         entity: binary_sensor.car_security_upgraded_car_power_detected
         name: Charging
 
+  # --- Emergency Tools ---
   - type: custom:mushroom-button-card
     icon: mdi:restart
     name: Remote Reset Tracker
@@ -51,4 +58,4 @@ cards:
       target:
         entity_id: button.car_security_upgraded_restart_car_tracker
       confirmation:
-        text: Are you sure you want to remotely reboot the tracker?
+        text: Are you sure you want to remotely reboot the S3-SIM tracker?
