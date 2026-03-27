@@ -1,4 +1,5 @@
-# 🚨 ESP32 Car Security — Home Assistant Distributed Alarm (Sensor & Siren)
+# 🚨 ESP32 Car Security
+## Home Assistant Distributed Alarm (Sensor & Siren)
 
 ![PNWC Car Alarm Project Header](./esp32alarm.png)
 
