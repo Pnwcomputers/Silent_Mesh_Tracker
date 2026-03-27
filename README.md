@@ -1,9 +1,10 @@
-# 🚨 ESP32 Car Security
-## Home Assistant Distributed Car & Motion Alarm System (Sensor, Siren & Kill Switch)
+# 🚨 ESP32 Motion Security — Home Assistant Distributed Alarm System (Sensor, Siren & Kill Switch)
 
-![PNWC Car Alarm Project Header](./esp32alarm.png)
+<p align="center">
+  <img src="esp32alarm.png" width="800" alt="PNWC Car Alarm Project Collage">
+</p>
 
-A high-performance, distributed vehicle security system that bridges a battery-powered mobile sensor unit with a mains-powered house siren via Home Assistant and ESPHome.
+A high-performance, distributed vehicle security system...
 
 ---
 
@@ -49,6 +50,12 @@ A high-performance, distributed vehicle security system that bridges a battery-p
 * **Intelligent Power:** Car unit enters deep sleep if no presence is detected, waking only on physical disturbance.
 * **Visual Feedback:** The T-Display screens provide real-time status (RSSI, Uptime, Battery, and Alarm State).
 * **Hardwired Fail-safe:** A physical button wired to the house unit can kill the siren and disarm the system even if Home Assistant or Wi-Fi is lagging.
+
+---
+
+## 💡 Final Implementation Tips
+* ADC Calibration: In the car-security YAML, you start with a multiply: 2.0 filter for the battery. Depending on the exact resistance of your resistors, you might need to use a multimeter to check the battery voltage and adjust that multiplier (e.g., 2.02 or 1.98) for perfect accuracy.
+* Display Drivers: The House Unit uses platform: ili9xxx with model: ST7789V. If the colors appear inverted (e.g., Black looks White), add invert: true to your display configuration block.
 
 ---
 
