@@ -1,0 +1,77 @@
+### Home Assistant Dashboard (Lovelace)
+#### System Control Card (YAML)
+
+type: vertical-stack
+cards:
+  - type: custom:mushroom-title-card
+    title: 🚨 PNWC Vehicle Security
+    subtitle: System Status & Controls
+
+  # --- Status Row (Chips) ---
+  - type: custom:mushroom-chips-card
+    chips:
+      - type: entity
+        entity: binary_sensor.car_security_sensor_car_power_detected
+        content_info: name
+        name: Engine/Charging
+      - type: entity
+        entity: sensor.car_security_sensor_car_battery_voltage
+        icon: mdi:battery-check
+      - type: entity
+        entity: binary_sensor.car_security_sensor_car_presence
+        content_info: state
+        name: Presence
+
+  # --- Main Control Row ---
+  - type: horizontal-stack
+    cards:
+      - type: custom:mushroom-entity-card
+        entity: input_boolean.car_alarm_armed
+        name: Alarm System
+        icon: mdi:shield-lock
+        icon_color: red
+        layout: vertical
+        tap_action:
+          action: toggle
+        hold_action:
+          action: more-info
+
+      - type: custom:mushroom-entity-card
+        entity: input_boolean.car_alarm_maintenance
+        name: Maintenance
+        icon: mdi:wrench
+        icon_color: orange
+        layout: vertical
+        tap_action:
+          action: toggle
+
+  # --- Siren Override (Only shows if Siren is ON) ---
+  - type: conditional
+    conditions:
+      - entity: switch.house_siren_siren_relay
+        state: 'on'
+    card:
+      type: custom:mushroom-template-card
+      primary: !! SIREN IS ACTIVE !!
+      secondary: Tap to Kill Siren Immediately
+      icon: mdi:alarm-light
+      icon_color: red
+      layout: horizontal
+      fill_container: true
+      tap_action:
+        action: call-service
+        service: switch.turn_off
+        target:
+          entity_id: switch.house_siren_siren_relay
+
+  # --- Diagnostic Info ---
+  - type: entities
+    entities:
+      - entity: sensor.car_security_sensor_car_detection_distance
+        name: Radar Range
+      - entity: text_sensor.house_siren_last_trigger_source
+        name: Last Alarm Trigger
+      - entity: sensor.car_security_sensor_car_sensor_wifi_rssi
+        name: Car Signal Strength
+    show_header_toggle: false
+    state_color: true
