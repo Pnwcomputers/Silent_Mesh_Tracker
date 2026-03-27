@@ -13,3 +13,23 @@ Thumbs.db
 # Python bytecode (if using custom scripts)
 __pycache__/
 *.py[cod]
+*.swp
+
+# --- Project Specific Artifacts ---
+# Ignore the large 3D print slices (G-code) but keep the .STL/.SVG designs
+*.gcode
+*.curaproject
+*.3mf
+
+# --- Firmware & Binary Artifacts ---
+# If you ever compile manually via CLI, don't sync the heavy binaries
+*.bin
+*.elf
+*.o
+
+# --- Editor / IDE ---
+# Keeps your personal VS Code or PlatformIO workspace settings local
+.vscode/
+.idea/
+*.swp
+*.bak
