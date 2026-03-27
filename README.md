@@ -24,7 +24,7 @@ To build your own **ESP32 -> Home Assistant, Security System**, you will need th
 * **ESP32 Microcontroller:** [LILYGO T-Display S3](https://a.co/d/0gzxxSAu) (Dual-core ESP32-S3 with 1.9" LCD)
 * **Presence Sensor:** [LD2410C mmWave Radar](https://a.co/d/06LWMXAf) (Human presence detection)
 * **Vibration Sensor:** [SW-420 Motion Sensor](https://a.co/d/02E32HKW) (Shock/Vibration trigger)
-* **LiPo Battery:** [3.7V 2000mAh LiPo Battery](https://a.co/d/02E32HKW) (JST 1.25mm connector)
+* **LiPo Battery:** [3.7V 2000mAh LiPo Battery](https://a.co/d/0hEXVDKv) (JST 1.25mm connector)
 
 ### 🏠 Unit 2: House Siren (Siren Wall Powered/Relay Controlled)
 * **ESP32 Microcontroller:** [ESP32-WROOM-32 DevKit](https://a.co/d/05z59KT6) (Standard 30-pin version)
