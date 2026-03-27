@@ -41,13 +41,5 @@ Your **T-SIM7670G-S3** won't connect to LTE until the APN is correct.
 
 ### Phase 5: Dashboard & Automation Sync
 1. Copy the contents of `dashboard.md` into a new **Manual Card** on your Home Assistant Lovelace dashboard.
-2. Copy the contents of `ha_automations.yaml` into your Home Assistant `automations.yaml` file (or use the UI to recreate them using the IDs provided).
+2. Copy the contents of `ha_automations.yaml` into your Home Assistant `automations.yaml` file.
 3. **Test:** Arm the system via the dashboard, then shake the sensor. You should receive a notification and see the **Frigate** recording trigger.
-
----
-
-### 🧪 Post-Install Check
-* **WiFi Check:** Does the unit show "Online" in HA?
-* **GPS Check:** Does the Map show your car's exact location?
-* **Siren Check:** Use the "Trigger Siren" button in the dashboard. Does the house unit click its relay?
-* **Stealth Check:** Are the LEDs on the S3 board turned off after boot?
