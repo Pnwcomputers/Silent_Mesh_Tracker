@@ -1,19 +1,26 @@
 # ═══════════════════════════════════════════════════════════════════
-# PNWC CAR SECURITY — SILENT MESH TRACKER (CELLULAR FORK)
-# Board: LILYGO T-SIM7670G-S3 | Logic: GPS -> Meshtastic Map
+# PNWC CAR SECURITY — UPGRADED CELLULAR/GPS EDITION
+# Board: LILYGO T-SIM7670G-S3 | Logic: WiFi + LTE + GPS + Radar
 # ═══════════════════════════════════════════════════════════════════
 
 esphome:
-  name: pnwc-mesh-tracker
+  name: car-security-upgraded
   on_boot:
     priority: 600
     then:
       - pmu.axp2101.set_vbus_limit: 500mA
-      - script.execute: enter_stealth_mode
 
 esp32:
   board: esp32-s3-devkitc-1
   framework: {type: arduino}
+
+# --- Connectivity ---
+api: # Connects to Home Assistant
+ota:
+wifi:
+  networks:
+    - ssid: "Your_WiFi"
+      password: "Your_Password"
 
 i2c:
   sda: GPIO12
@@ -28,91 +35,57 @@ uart:
     tx_pin: GPIO17
     rx_pin: GPIO18
     baud_rate: 115200
-  - id: mesh_uart
-    tx_pin: GPIO43
-    rx_pin: GPIO44
-    baud_rate: 38400
+  - id: radar_uart
+    tx_pin: GPIO2
+    rx_pin: GPIO3
+    baud_rate: 256000
 
+# --- Sensors ---
+ld2410:
+
+binary_sensor:
+  - platform: gpio
+    pin: GPIO1 
+    id: car_vibration
+    name: "Car Vibration"
+    device_class: vibration
+  
+  - platform: ld2410
+    has_target:
+      name: "Car Presence"
+      id: car_presence
+
+# --- Cellular & GPS ---
 sim7000:
   id: modem
   uart_id: modem_uart
   pwr_key_pin: GPIO13
+  apn: "your_apn"
   gps:
     latitude: { id: car_lat }
     longitude: { id: car_lon }
 
+# --- Automation Logic ---
+script:
+  - id: alert_sequence
+    mode: single
+    then:
+      - if:
+          condition:
+            wifi.connected:
+          then:
+            - logger.log: "WiFi OK: Alerting Home Assistant"
+          else:
+            - logger.log: "WiFi DOWN: Sending Emergency SMS"
+            - sim7000.send_at_command: "AT+CGNSPWR=1"
+            - delay: 10s
+            - sim7000.send_sms:
+                number: "+15551234567"
+                message: !lambda |-
+                  return "🚨 ALARM TRIGGERED! Car moved or entered. GPS: " + id(car_lat).state + "," + id(car_lon).state;
+
 sensor:
   - platform: axp2101
     battery_voltage:
-      name: "Tracker Battery"
+      name: "Battery Voltage"
       id: batt_volts
-      on_value_range:
-        - below: 3.4
-          then:
-            - script.execute: last_gasp_sequence
-
-globals:
-  - id: is_moving
-    type: bool
-    initial_value: 'false'
-
-binary_sensor:
-  - platform: gpio
-    pin: GPIO1 # SW-420 Vibration
-    id: motion_sensor
-    on_press:
-      then:
-        - lambda: 'id(is_moving) = true;'
-        - script.execute: push_to_mesh
-        - script.execute: motion_timeout
-
-script:
-  - id: enter_stealth_mode
-    then:
-      - sim7000.send_at_command: "AT+CNETLIGHT=0"
-      - logger.log: "🌑 Stealth Mode Active"
-
-  - id: motion_timeout
-    mode: restart
-    then:
-      - delay: 5min
-      - lambda: 'id(is_moving) = false;'
-
-  - id: push_to_mesh
-    mode: single
-    then:
-      - sim7000.send_at_command: "AT+CGNSPWR=1"
-      - while:
-          condition: { lambda: 'return id(is_moving);' }
-          then:
-            - uart.write:
-                uart_id: mesh_uart
-                data: !lambda |-
-                  return "POS:" + id(car_lat).state + "," + id(car_lon).state;
-            - delay: 30s
-      - sim7000.send_at_command: "AT+CGNSPWR=0"
-
-  - id: last_gasp_sequence
-    mode: single
-    then:
-      - logger.log: "⚠️ BATTERY CRITICAL - Sending Last Gasp Location"
-      - sim7000.send_at_command: "AT+CGNSPWR=1"
-      - delay: 60s # Give GPS extra time for a final precise fix
-      - uart.write:
-          uart_id: mesh_uart
-          data: !lambda |-
-            return "ALRT:BATT_CRIT_POS:" + id(car_lat).state + "," + id(car_lon).state;
-      - delay: 5s
-      - deep_sleep.enter: deep_sleep_component
-
-deep_sleep:
-  id: deep_sleep_component
-  # No sleep_duration set here; it will stay asleep until USB power is connected.
-
-interval:
-  - interval: 15min
-    then:
-      - if:
-          condition: { lambda: 'return !id(is_moving);' }
-          then:
-            - script.execute: push_to_mesh
