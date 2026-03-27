@@ -1,6 +1,6 @@
 # ═══════════════════════════════════════════════════════════════════
-# PNWC CAR SECURITY — UPGRADED CELLULAR/GPS/BLACKBOX EDITION
-# Hardware: LILYGO T-SIM7670G-S3 (ESP32-S3 + LTE + GPS + SD Card)
+# PNWC CAR SECURITY — ULTIMATE PRO EDITION
+# Hardware: LILYGO T-SIM7670G-S3 (ESP32-S3 + LTE + GPS + SD + BLE)
 # ═══════════════════════════════════════════════════════════════════
 
 esphome:
@@ -14,18 +14,25 @@ esphome:
 
 esp32:
   board: esp32-s3-devkitc-1
-  framework:
-    type: arduino
+  framework: {type: arduino}
 
-# --- Connectivity ---
-api:
+# --- 🛰️ Connectivity ---
+api: 
 ota:
 wifi:
   networks:
-    - ssid: "Your_WiFi_Name"
-      password: "Your_WiFi_Password"
+    - ssid: "Your_WiFi"
+      password: "Your_Password"
 
-# --- Power & Modem Hardware ---
+# --- 🕵️ Private Bluetooth Fox-Hunt Beacon ---
+esp32_ble_beacon:
+  type: iBeacon
+  uuid: "D34DBEEF-1234-5678-90AB-CDEF12345678" 
+  major: 100
+  minor: 1
+  tx_power: 4 
+
+# --- 🔌 Hardware Setup ---
 i2c:
   sda: GPIO12
   scl: GPIO11
@@ -44,58 +51,17 @@ uart:
     rx_pin: GPIO3
     baud_rate: 256000
 
-# --- SD Card "Black Box" Logging ---
-# T-SIM7670G-S3 uses SDIO for the TF card slot
-sdcard:
-  cs_pin: GPIO10 # Check specific board revision, usually 10 on S3-SIM
-  
-# --- Sensors ---
-ld2410:
-
-binary_sensor:
-  - platform: gpio
-    pin: GPIO1 
-    id: car_vibration
-    name: "Car Vibration"
-    device_class: vibration
-    on_press:
-      then:
-        - script.execute: alert_logic
-
-  - platform: ld2410
-    has_target:
-      name: "Car Presence"
-      id: car_presence
-      on_press:
-        then:
-          - script.execute: alert_logic
-
-# --- Cellular & GPS ---
+# --- 📡 Cellular & GPS ---
 sim7000:
   id: modem
   uart_id: modem_uart
   pwr_key_pin: GPIO13
-  apn: "hologram"
+  apn: "hologram" 
   gps:
-    latitude: 
-      id: car_lat
-      on_value:
-        then:
-          - script.execute: log_to_blackbox
-    longitude: 
-      id: car_lon
-      id: car_lon
-      on_value:
-        then:
-          - script.execute: log_to_blackbox
+    latitude: { id: car_lat, on_value: { then: [script.execute: log_to_blackbox] } }
+    longitude: { id: car_lon, on_value: { then: [script.execute: log_to_blackbox] } }
 
-# --- Management ---
-button:
-  - platform: restart
-    name: "Restart Car Tracker"
-    id: restart_s3
-
-# --- Black Box & Alert Logic ---
+# --- 💾 Black Box & Alert Logic ---
 script:
   - id: stealth_mode
     then:
@@ -104,16 +70,14 @@ script:
 
   - id: log_to_blackbox
     mode: throttle
-    delay: 30s # Record a GPS point every 30 seconds
+    delay: 30s
     then:
       - lambda: |-
-          static int log_count = 0;
           if (id(car_lat).has_state()) {
             FILE *f = fopen("/sd/blackbox.log", "a");
             if (f != NULL) {
-              fprintf(f, "LAT:%.6f, LON:%.6f, VOLTS:%.2f\n", id(car_lat).state, id(car_lon).state, id(batt_volts).state);
+              fprintf(f, "%.6f,%.6f\n", id(car_lat).state, id(car_lon).state);
               fclose(f);
-              if (++log_count % 10 == 0) ESP_LOGI("SD", "Black Box: 10 points written to SD");
             }
           }
 
@@ -121,22 +85,34 @@ script:
     mode: single
     then:
       - if:
-          condition:
-            wifi.connected:
-          then:
-            - logger.log: "WiFi OK: Alerting Home Assistant"
+          condition: { wifi.connected: }
+          then: { logger.log: "WiFi OK" }
           else:
-            - logger.log: "WiFi Offline: Sending LTE Failover SMS"
             - sim7000.send_at_command: "AT+CGNSPWR=1"
             - delay: 15s
             - sim7000.send_sms:
                 number: "+15550000000"
                 message: !lambda |-
-                  return "🚨 PNWC ALARM: Intrusion! WiFi Offline. GPS: http://maps.google.com/maps?q=" 
+                  return "🚨 PNWC PRO: WiFi Lost/Intrusion! GPS: http://maps.google.com/maps?q=" 
                          + to_string(id(car_lat).state) + "," + to_string(id(car_lon).state);
 
+# --- ⚡ Sensors ---
 sensor:
   - platform: axp2101
-    battery_voltage:
-      name: "18650 Battery Voltage"
-      id: batt_volts
+    battery_voltage: { name: "18650 Battery Voltage", id: car_security_upgraded_18650_battery_voltage }
+
+binary_sensor:
+  - platform: gpio
+    pin: GPIO1 
+    id: car_vibration
+    name: "Car Vibration"
+    on_press: { then: [script.execute: alert_logic] }
+  - platform: ld2410
+    has_target:
+      name: "Car Presence"
+      on_press: { then: [script.execute: alert_logic] }
+
+button:
+  - platform: restart
+    name: "Remote Reset Tracker"
+    id: restart_s3
