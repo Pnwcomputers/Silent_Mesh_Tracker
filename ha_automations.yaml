@@ -1,13 +1,15 @@
-# ═══════════════════════════════════════════════════════════════════
-# PNWC CAR SECURITY — UPGRADED HA AUTOMATIONS
-# ═══════════════════════════════════════════════════════════════════
+# ─────────────────────────────────────────
+# PNWC CAR SECURITY — MASTER HA LOGIC
+# ─────────────────────────────────────────
 
 automation:
-# ── 1: Vibration only ──
-  - alias: "Car Alarm - Vibration Detected"
-    id: car_alarm_vibration
+  - alias: "Car Alarm - Master Trigger"
+    id: car_alarm_master
     mode: single
     trigger:
+      - platform: state
+        entity_id: binary_sensor.car_security_upgraded_car_presence
+        to: "on"
       - platform: state
         entity_id: binary_sensor.car_security_upgraded_car_vibration
         to: "on"
@@ -16,48 +18,28 @@ automation:
         entity_id: input_boolean.car_alarm_armed
         state: "on"
     action:
-      - service: notify.mobile_app_your_phone
-        data:
-          title: "⚠️ Car Alarm — Vibration"
-          message: "Vehicle disturbance detected"
-          data:
-            ttl: 0
-            priority: high
-            image: /api/camera_proxy/camera.driveway
-            actions:
-              - action: DISARM_CAR_ALARM
-                title: Disarm
-              - action: TRIGGER_SIREN
-                title: Trigger Siren
-      - service: switch.turn_on
-        target:
-          entity_id: switch.frigate_driveway_record
-
-# ── 2: Presence confirmed — Siren + Away Logic ──
-  - alias: "Car Alarm - Intruder Confirmed"
-    id: car_alarm_intruder
-    mode: single
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.car_security_upgraded_car_presence
-        to: "on"
-    condition:
-      - condition: state
-        entity_id: input_boolean.car_alarm_armed
-        state: "on"
-    action:
       - choose:
-          # At Home: Sound the Local Siren
+          # --- CASE 1: CAR IS AT HOME ---
           - conditions:
               - condition: zone
                 entity_id: device_tracker.car_security_upgraded
                 zone: zone.home
             sequence:
               - service: esphome.house_siren_trigger_alarm
-              - service: text_sensor.set_value
-                target: { entity_id: text_sensor.house_siren_last_trigger_source }
-                data: { value: "Car Intrusion" }
-          # Not Home: GPS Alert Priority
+              - service: switch.turn_on
+                target:
+                  entity_id: switch.frigate_driveway_record
+              - service: notify.mobile_app_your_phone
+                data:
+                  title: "🚨 INTRUDER AT DRIVEWAY"
+                  message: "Car presence confirmed. House Siren Active."
+                  data:
+                    image: "/api/camera_proxy/camera.driveway"
+                    actions:
+                      - action: "DISARM_CAR_ALARM"
+                        title: "Silence Alarm"
+
+          # --- CASE 2: CAR IS AWAY (THEFT) ---
           - conditions:
               - condition: not
                 conditions:
@@ -67,58 +49,9 @@ automation:
             sequence:
               - service: notify.mobile_app_your_phone
                 data:
-                  title: "🚨 VEHICLE MOVING / AWAY"
-                  message: "Car moved! Map: {{ state_attr('device_tracker.car_security_upgraded', 'latitude') }}, {{ state_attr('device_tracker.car_security_upgraded', 'longitude') }}"
-
-# ── 3 & 4: Mobile Actions ──
-  - alias: "Car Alarm - Mobile Actions"
-    id: car_alarm_mobile_actions
-    trigger:
-      - platform: event
-        event_type: mobile_app_notification_action
-    action:
-      - choose:
-          - conditions: "{{ wait.trigger.event.data.action == 'DISARM_CAR_ALARM' }}"
-            sequence:
-              - service: input_boolean.turn_off
-                target: { entity_id: input_boolean.car_alarm_armed }
-              - service: switch.turn_off
-                target: { entity_id: switch.house_siren_siren_relay }
-          - conditions: "{{ wait.trigger.event.data.action == 'TRIGGER_SIREN' }}"
-            sequence:
-              - service: esphome.house_siren_trigger_alarm
-
-# ── 6-11: Schedules & Maintenance (Your Original Logic) ──
-  - alias: "Car Alarm - Scheduled Arm 10PM"
-    trigger: { platform: time, at: "22:00:00" }
-    condition: { condition: state, entity_id: input_boolean.car_alarm_maintenance, state: "off" }
-    action: { service: input_boolean.turn_on, target: { entity_id: input_boolean.car_alarm_armed } }
-
-  - alias: "Car Alarm - Scheduled Disarm 6AM"
-    trigger: { platform: time, at: "06:00:00" }
-    action: { service: input_boolean.turn_off, target: { entity_id: input_boolean.car_alarm_armed } }
-
-  - alias: "Car Alarm - Maintenance Overnight Warning"
-    trigger: { platform: time_pattern, hours: "/1" }
-    condition:
-      - condition: state
-        entity_id: input_boolean.car_alarm_maintenance
-        state: "on"
-      - condition: time
-        after: "22:00:00"
-        before: "06:00:00"
-    action:
-      - service: notify.mobile_app_your_phone
-        data:
-          title: "Car Alarm Still in Maintenance"
-          message: "The alarm is DISARMED overnight. Maintenance mode is still ON."
-          data:
-            actions: [{action: CLEAR_MAINTENANCE, title: "Rearm Now"}]
-
-input_boolean:
-  car_alarm_armed:
-    name: Car Alarm Armed
-    icon: mdi:car-lock
-  car_alarm_maintenance:
-    name: Car Alarm Maintenance Mode
-    icon: mdi:wrench
+                  title: "🚨 VEHICLE STOLEN / MOVING"
+                  message: "Live Tracking Active! Location: {{ state_attr('device_tracker.car_security_upgraded', 'latitude') }}, {{ state_attr('device_tracker.car_security_upgraded', 'longitude') }}"
+                  data:
+                    priority: high
+                    ttl: 0
+                    clickAction: "/lovelace/car-map"
