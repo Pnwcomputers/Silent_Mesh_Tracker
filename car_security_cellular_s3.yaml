@@ -1,6 +1,6 @@
 # ═══════════════════════════════════════════════════════════════════
 # PNWC CAR SECURITY — UPGRADED CELLULAR/GPS EDITION
-# Hardware: LILYGO T-SIM7670G-S3
+# Board: LILYGO T-SIM7670G-S3
 # ═══════════════════════════════════════════════════════════════════
 
 esphome:
@@ -16,8 +16,7 @@ esp32:
   board: esp32-s3-devkitc-1
   framework: {type: arduino}
 
-# --- Connectivity ---
-api: # Connects to Home Assistant
+api:
 ota:
 wifi:
   networks:
@@ -69,17 +68,17 @@ sim7000:
   id: modem
   uart_id: modem_uart
   pwr_key_pin: GPIO13
-  apn: "hologram" # Update to your APN
+  apn: "hologram" 
   gps:
     latitude: { id: car_lat }
     longitude: { id: car_lon }
 
-# --- Intelligent Alert Logic ---
+# --- Intelligent Logic ---
 script:
   - id: stealth_mode
     then:
       - sim7000.send_at_command: "AT+CNETLIGHT=0"
-      - logger.log: "🌑 Stealth Mode Active (LEDs Off)"
+      - logger.log: "🌑 Stealth Mode Active"
 
   - id: alert_logic
     mode: single
@@ -88,15 +87,15 @@ script:
           condition:
             wifi.connected:
           then:
-            - logger.log: "WiFi OK: Alerting Home Assistant"
+            - logger.log: "WiFi Connected: Signaling Home Assistant API"
           else:
-            - logger.log: "WiFi JAMMED/OUT OF RANGE: Sending LTE SMS"
+            - logger.log: "WiFi Out/Jammed: Activating LTE Failover"
             - sim7000.send_at_command: "AT+CGNSPWR=1"
-            - delay: 10s
+            - delay: 15s
             - sim7000.send_sms:
-                number: "+15551234567" # UPDATE PHONE
+                number: "+15551234567"
                 message: !lambda |-
-                  return "🚨 PNWC ALARM: WiFi Lost! Car Intrusion/Vibration. GPS: https://maps.google.com/?q=" 
+                  return "🚨 PNWC ALARM: Intrusion while WiFi Offline. GPS: http://maps.google.com/maps?q=" 
                          + to_string(id(car_lat).state) + "," + to_string(id(car_lon).state);
 
 sensor:
@@ -104,3 +103,20 @@ sensor:
     battery_voltage:
       name: "18650 Battery Voltage"
       id: batt_volts
+      on_value_range:
+        - below: 3.4
+          then:
+            - script.execute: last_gasp_sequence
+
+  - id: last_gasp_sequence
+    mode: single
+    then:
+      - sim7000.send_at_command: "AT+CGNSPWR=1"
+      - delay: 60s
+      - sim7000.send_sms:
+          number: "+15551234567"
+          message: "🔋 BATT CRITICAL. Final Location pinged to Mesh/API."
+      - deep_sleep.enter: shutdown_sleep
+
+deep_sleep:
+  id: shutdown_sleep
