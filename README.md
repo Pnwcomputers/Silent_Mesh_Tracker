@@ -1,18 +1,19 @@
-# 🚨 PNWC Car Security — Upgraded Cellular/GPS Edition
+# 🚨 PNWC Car Security — Pro Edition (Cellular/GPS)
 
-This is the **Pro Version** of the PNWC Car Alarm. It keeps all original security features (Radar, Vibration, Home Assistant Integration) but upgrades the hardware to the **LILYGO T-SIM7670G-S3**.
+This repository contains the **Ultimate Security Suite** for vehicle monitoring, using the **LILYGO T-SIM7670G-S3**.
 
-## 🚀 Key Upgrades
-- **Triple-Mode Connectivity:** Uses Home Assistant (WiFi) as primary, falls back to **LTE SMS** if WiFi is jammed or out of range.
-- **Autonomous GPS:** Built-in GPS tracking for real-time recovery.
-- **Improved Power:** Integrated 18650 battery management via the AXP2101 PMU.
+## 🏗️ Core Architecture
+1. **The Sensor (T-SIM7670G-S3):** Radar presence + Vibration sensing + GPS Tracking + 4G LTE Failover.
+2. **The Alarm (WROOM-32):** 12V Relay house siren controller.
+3. **The Intelligence:** Home Assistant & Frigate NVR integration.
 
-## 🏗️ Hardware Pinout
-- **Vibration (SW-420):** GPIO 1
-- **Radar (LD2410):** TX: GPIO 3 | RX: GPIO 2
-- **Modem/GPS:** Internal (GPIO 17/18/13)
+## 📡 Upgraded Capabilities
+- **Failover Alerts:** If WiFi is jammed or the car leaves your property, the unit automatically switches to **LTE SMS** alerts with a Google Maps link.
+- **Dynamic Power:** 18650 management with a "Last Gasp" GPS ping before battery depletion.
+- **Stealth Mode:** Software-killed LEDs and screen for covert tracking.
 
-
-
-## 🛠️ Usage
-This unit functions exactly like the standard build in Home Assistant, but will "fail-over" to Cellular alerts if the car leaves your property.
+## 📂 File List
+- `car_security_cellular_s3.yaml`: Pro firmware.
+- `ha_automations.yaml`: Full logic suite (Scheduling, Siren, GPS Geofencing).
+- `house_siren_wroom32.yaml`: House siren controller firmware.
+- `antenna_setup.md`: Critical GPS/LTE mounting guide.
