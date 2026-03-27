@@ -1,18 +1,15 @@
 # ═══════════════════════════════════════════════════════════════════
-# PNWC CAR SECURITY — HOME ASSISTANT AUTOMATIONS
-# Ties car-security (S3) to house-siren (WROOM-32)
+# PNWC CAR SECURITY — UPGRADED HA AUTOMATIONS
 # ═══════════════════════════════════════════════════════════════════
 
 automation:
-# ─────────────────────────────────────────
-# AUTOMATION 1: Vibration only — Notification + Frigate
-# ─────────────────────────────────────────
+# ── 1: Vibration only ──
   - alias: "Car Alarm - Vibration Detected"
     id: car_alarm_vibration
     mode: single
     trigger:
       - platform: state
-        entity_id: binary_sensor.car_security_sensor_car_vibration
+        entity_id: binary_sensor.car_security_upgraded_car_vibration
         to: "on"
     condition:
       - condition: state
@@ -36,123 +33,73 @@ automation:
         target:
           entity_id: switch.frigate_driveway_record
 
-# ─────────────────────────────────────────
-# AUTOMATION 2: Presence confirmed — Escalate to Siren
-# ─────────────────────────────────────────
+# ── 2: Presence confirmed — Siren + Away Logic ──
   - alias: "Car Alarm - Intruder Confirmed"
     id: car_alarm_intruder
     mode: single
     trigger:
       - platform: state
-        entity_id: binary_sensor.car_security_sensor_car_presence
+        entity_id: binary_sensor.car_security_upgraded_car_presence
         to: "on"
     condition:
       - condition: state
         entity_id: input_boolean.car_alarm_armed
         state: "on"
-      - condition: state
-        entity_id: binary_sensor.car_security_sensor_car_vibration
-        state: "on"
     action:
-      # Activate siren via ESPHome Script (Unit 2)
-      - service: esphome.house_siren_trigger_alarm
-        data: {}
-      # Update trigger tracking
-      - service: text_sensor.set_value
-        target:
-          entity_id: text_sensor.house_siren_last_trigger_source
-        data:
-          value: "Car Intrusion"
-      - service: notify.mobile_app_your_phone
-        data:
-          title: "🚨 INTRUDER — Car Alarm Active"
-          message: "Presence confirmed in vehicle. Siren triggered."
-          data:
-            ttl: 0
-            priority: high
-            image: /api/camera_proxy/camera.driveway
-            actions:
-              - action: DISARM_CAR_ALARM
-                title: Disarm + Kill Siren
-      - service: light.turn_on
-        target:
-          entity_id: light.exterior_all
-        data:
-          flash: long
+      - choose:
+          # At Home: Sound the Local Siren
+          - conditions:
+              - condition: zone
+                entity_id: device_tracker.car_security_upgraded
+                zone: zone.home
+            sequence:
+              - service: esphome.house_siren_trigger_alarm
+              - service: text_sensor.set_value
+                target: { entity_id: text_sensor.house_siren_last_trigger_source }
+                data: { value: "Car Intrusion" }
+          # Not Home: GPS Alert Priority
+          - conditions:
+              - condition: not
+                conditions:
+                  - condition: zone
+                    entity_id: device_tracker.car_security_upgraded
+                    zone: zone.home
+            sequence:
+              - service: notify.mobile_app_your_phone
+                data:
+                  title: "🚨 VEHICLE MOVING / AWAY"
+                  message: "Car moved! Map: {{ state_attr('device_tracker.car_security_upgraded', 'latitude') }}, {{ state_attr('device_tracker.car_security_upgraded', 'longitude') }}"
 
-# ─────────────────────────────────────────
-# AUTOMATION 3: Mobile action — Disarm & Kill
-# ─────────────────────────────────────────
-  - alias: "Car Alarm - Mobile Disarm Action"
-    id: car_alarm_disarm_action
-    mode: single
+# ── 3 & 4: Mobile Actions ──
+  - alias: "Car Alarm - Mobile Actions"
+    id: car_alarm_mobile_actions
     trigger:
       - platform: event
         event_type: mobile_app_notification_action
-        event_data:
-          action: DISARM_CAR_ALARM
     action:
-      - service: input_boolean.turn_off
-        target:
-          entity_id: input_boolean.car_alarm_armed
-      - service: switch.turn_off
-        target:
-          entity_id: switch.house_siren_siren_relay
-      - service: notify.mobile_app_your_phone
-        data:
-          title: "Car Alarm Disarmed"
-          message: "Alarm disarmed via mobile action"
+      - choose:
+          - conditions: "{{ wait.trigger.event.data.action == 'DISARM_CAR_ALARM' }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target: { entity_id: input_boolean.car_alarm_armed }
+              - service: switch.turn_off
+                target: { entity_id: switch.house_siren_siren_relay }
+          - conditions: "{{ wait.trigger.event.data.action == 'TRIGGER_SIREN' }}"
+            sequence:
+              - service: esphome.house_siren_trigger_alarm
 
-# ─────────────────────────────────────────
-# AUTOMATION 4: Mobile action — Manual Siren Trigger
-# ─────────────────────────────────────────
-  - alias: "Car Alarm - Mobile Siren Trigger"
-    id: car_alarm_manual_siren
-    mode: single
-    trigger:
-      - platform: event
-        event_type: mobile_app_notification_action
-        event_data:
-          action: TRIGGER_SIREN
-    action:
-      - service: esphome.house_siren_trigger_alarm
-
-# ─────────────────────────────────────────
-# AUTOMATION 6 & 7: Scheduled Windows
-# ─────────────────────────────────────────
+# ── 6-11: Schedules & Maintenance (Your Original Logic) ──
   - alias: "Car Alarm - Scheduled Arm 10PM"
-    id: car_alarm_scheduled_arm
-    trigger:
-      - platform: time
-        at: "22:00:00"
-    condition:
-      - condition: state
-        entity_id: input_boolean.car_alarm_maintenance
-        state: "off"
-    action:
-      - service: input_boolean.turn_on
-        target:
-          entity_id: input_boolean.car_alarm_armed
+    trigger: { platform: time, at: "22:00:00" }
+    condition: { condition: state, entity_id: input_boolean.car_alarm_maintenance, state: "off" }
+    action: { service: input_boolean.turn_on, target: { entity_id: input_boolean.car_alarm_armed } }
 
   - alias: "Car Alarm - Scheduled Disarm 6AM"
-    id: car_alarm_scheduled_disarm
-    trigger:
-      - platform: time
-        at: "06:00:00"
-    action:
-      - service: input_boolean.turn_off
-        target:
-          entity_id: input_boolean.car_alarm_armed
+    trigger: { platform: time, at: "06:00:00" }
+    action: { service: input_boolean.turn_off, target: { entity_id: input_boolean.car_alarm_armed } }
 
-# ─────────────────────────────────────────
-# AUTOMATION 10: Maintenance Auto-Recovery Warning
-# ─────────────────────────────────────────
   - alias: "Car Alarm - Maintenance Overnight Warning"
-    id: car_alarm_maintenance_overnight_warning
-    mode: single
-    trigger:
-      - platform: time_pattern
-        hours: "/1"
+    trigger: { platform: time_pattern, hours: "/1" }
     condition:
       - condition: state
         entity_id: input_boolean.car_alarm_maintenance
@@ -166,33 +113,12 @@ automation:
           title: "Car Alarm Still in Maintenance"
           message: "The alarm is DISARMED overnight. Maintenance mode is still ON."
           data:
-            actions:
-              - action: CLEAR_MAINTENANCE
-                title: Rearm Now
+            actions: [{action: CLEAR_MAINTENANCE, title: "Rearm Now"}]
 
-# ─────────────────────────────────────────
-# AUTOMATION 11: Mobile Clear Maintenance
-# ─────────────────────────────────────────
-  - alias: "Car Alarm - Mobile Clear Maintenance"
-    id: car_alarm_mobile_clear_maintenance
-    trigger:
-      - platform: event
-        event_type: mobile_app_notification_action
-        event_data:
-          action: CLEAR_MAINTENANCE
-    action:
-      - service: input_boolean.turn_off
-        target:
-          entity_id: input_boolean.car_alarm_maintenance
-
-# ═══════════════════════════════════════════════════════════════════
-# HELPERS REQUIRED (Add via Settings > Devices & Services > Helpers)
-# ═══════════════════════════════════════════════════════════════════
 input_boolean:
   car_alarm_armed:
     name: Car Alarm Armed
     icon: mdi:car-lock
-
   car_alarm_maintenance:
     name: Car Alarm Maintenance Mode
     icon: mdi:wrench
