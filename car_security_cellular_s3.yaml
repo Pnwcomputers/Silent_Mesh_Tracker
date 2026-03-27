@@ -1,7 +1,6 @@
 # ═══════════════════════════════════════════════════════════════════
-# PNWC CAR SECURITY — UPGRADED CELLULAR/GPS EDITION
-# Hardware: LILYGO T-SIM7670G-S3 (ESP32-S3 + LTE + GPS)
-# Logic: WiFi (Primary) + LTE SMS (Failover) + GPS + Radar + SD Log
+# PNWC CAR SECURITY — UPGRADED CELLULAR/GPS/BLACKBOX EDITION
+# Hardware: LILYGO T-SIM7670G-S3 (ESP32-S3 + LTE + GPS + SD Card)
 # ═══════════════════════════════════════════════════════════════════
 
 esphome:
@@ -19,14 +18,12 @@ esp32:
     type: arduino
 
 # --- Connectivity ---
-api: # Connects to Home Assistant
+api:
 ota:
 wifi:
   networks:
     - ssid: "Your_WiFi_Name"
       password: "Your_WiFi_Password"
-  ap:
-    ssid: "Car-Security-Hotspot"
 
 # --- Power & Modem Hardware ---
 i2c:
@@ -47,6 +44,11 @@ uart:
     rx_pin: GPIO3
     baud_rate: 256000
 
+# --- SD Card "Black Box" Logging ---
+# T-SIM7670G-S3 uses SDIO for the TF card slot
+sdcard:
+  cs_pin: GPIO10 # Check specific board revision, usually 10 on S3-SIM
+  
 # --- Sensors ---
 ld2410:
 
@@ -73,27 +75,47 @@ sim7000:
   id: modem
   uart_id: modem_uart
   pwr_key_pin: GPIO13
-  apn: "hologram" # Update to your specific IoT SIM APN
+  apn: "hologram"
   gps:
     latitude: 
-      name: "Car Latitude"
       id: car_lat
+      on_value:
+        then:
+          - script.execute: log_to_blackbox
     longitude: 
-      name: "Car Longitude"
       id: car_lon
+      id: car_lon
+      on_value:
+        then:
+          - script.execute: log_to_blackbox
 
-# --- Management Entities ---
+# --- Management ---
 button:
   - platform: restart
     name: "Restart Car Tracker"
     id: restart_s3
 
-# --- Intelligent Alert Logic ---
+# --- Black Box & Alert Logic ---
 script:
   - id: stealth_mode
     then:
-      - sim7000.send_at_command: "AT+CNETLIGHT=0" # Disables modem status LED
-      - logger.log: "🌑 Stealth Mode Active (Visuals Disabled)"
+      - sim7000.send_at_command: "AT+CNETLIGHT=0"
+      - logger.log: "🌑 Stealth Mode Active"
+
+  - id: log_to_blackbox
+    mode: throttle
+    delay: 30s # Record a GPS point every 30 seconds
+    then:
+      - lambda: |-
+          static int log_count = 0;
+          if (id(car_lat).has_state()) {
+            FILE *f = fopen("/sd/blackbox.log", "a");
+            if (f != NULL) {
+              fprintf(f, "LAT:%.6f, LON:%.6f, VOLTS:%.2f\n", id(car_lat).state, id(car_lon).state, id(batt_volts).state);
+              fclose(f);
+              if (++log_count % 10 == 0) ESP_LOGI("SD", "Black Box: 10 points written to SD");
+            }
+          }
 
   - id: alert_logic
     mode: single
@@ -102,15 +124,15 @@ script:
           condition:
             wifi.connected:
           then:
-            - logger.log: "WiFi OK: Alerting Home Assistant via API"
+            - logger.log: "WiFi OK: Alerting Home Assistant"
           else:
-            - logger.log: "WiFi JAMMED/OUT OF RANGE: Sending LTE SMS"
+            - logger.log: "WiFi Offline: Sending LTE Failover SMS"
             - sim7000.send_at_command: "AT+CGNSPWR=1"
-            - delay: 15s # Wait for GPS stabilization
+            - delay: 15s
             - sim7000.send_sms:
-                number: "+15550000000" # UPDATE TO YOUR PHONE NUMBER
+                number: "+15550000000"
                 message: !lambda |-
-                  return "🚨 PNWC ALARM: WiFi Lost! Intrusion Detected. GPS: http://maps.google.com/maps?q=" 
+                  return "🚨 PNWC ALARM: Intrusion! WiFi Offline. GPS: http://maps.google.com/maps?q=" 
                          + to_string(id(car_lat).state) + "," + to_string(id(car_lon).state);
 
 sensor:
@@ -118,20 +140,3 @@ sensor:
     battery_voltage:
       name: "18650 Battery Voltage"
       id: batt_volts
-      on_value_range:
-        - below: 3.4
-          then:
-            - script.execute: last_gasp_sequence
-
-  - id: last_gasp_sequence
-    mode: single
-    then:
-      - sim7000.send_at_command: "AT+CGNSPWR=1"
-      - delay: 60s
-      - sim7000.send_sms:
-          number: "+15550000000"
-          message: "🔋 BATT CRITICAL. Sending final GPS coordinates before shutdown."
-      - deep_sleep.enter: shutdown_sleep
-
-deep_sleep:
-  id: shutdown_sleep
