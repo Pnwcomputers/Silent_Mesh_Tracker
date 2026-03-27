@@ -1,0 +1,16 @@
+automation:
+  - alias: "Frigate - Force Record on Car Intrusion"
+    trigger:
+      - platform: state
+        entity_id: 
+          - binary_sensor.car_security_upgraded_car_presence
+          - binary_sensor.car_security_upgraded_car_vibration
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.car_alarm_armed
+        state: "on"
+    action:
+      - service: switch.turn_on
+        target:
+          entity_id: switch.frigate_driveway_record
