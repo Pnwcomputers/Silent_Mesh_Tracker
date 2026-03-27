@@ -1,16 +1,18 @@
-# 🛰️ PNWC Car Security — Silent Mesh Tracker Fork
+# 🚨 PNWC Car Security — Upgraded Cellular/GPS Edition
 
-This specialized fork is designed for the **LILYGO T-SIM7670G-S3**. It provides passive, high-stealth vehicle tracking via your existing **Meshtastic** network.
+This is the **Pro Version** of the PNWC Car Alarm. It keeps all original security features (Radar, Vibration, Home Assistant Integration) but upgrades the hardware to the **LILYGO T-SIM7670G-S3**.
 
-## ✨ Key Features
-- **Dynamic Duty Cycling:** High-speed 30s tracking while moving; 15m pulses while parked.
-- **Stealth Mode:** Disables all onboard LEDs and screen backlight via software.
-- **Last Gasp Logic:** Automatically sends one final precise GPS location to the mesh and enters safety-shutdown if the 18650 battery hits **3.4V**.
-- **Meshtastic Native:** No WiFi required; car appears as a standard node on your mesh map.
+## 🚀 Key Upgrades
+- **Triple-Mode Connectivity:** Uses Home Assistant (WiFi) as primary, falls back to **LTE SMS** if WiFi is jammed or out of range.
+- **Autonomous GPS:** Built-in GPS tracking for real-time recovery.
+- **Improved Power:** Integrated 18650 battery management via the AXP2101 PMU.
 
-## 🔌 Quick Wiring
-- **Vibration (SW-420):** Pin GPIO 1
-- **Mesh Connection:** ESP TX (43) -> Mesh Node RX | ESP RX (44) -> Mesh Node TX
-- **Power:** Integrated 18650 Holder (use high-quality protected cells).
+## 🏗️ Hardware Pinout
+- **Vibration (SW-420):** GPIO 1
+- **Radar (LD2410):** TX: GPIO 3 | RX: GPIO 2
+- **Modem/GPS:** Internal (GPIO 17/18/13)
 
-[Refer to antenna_setup.md for windshield mounting instructions.]
+
+
+## 🛠️ Usage
+This unit functions exactly like the standard build in Home Assistant, but will "fail-over" to Cellular alerts if the car leaves your property.
