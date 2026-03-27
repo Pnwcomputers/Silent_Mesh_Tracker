@@ -152,15 +152,19 @@ automation:
             Drive to charge or swap battery.
 
 # ─────────────────────────────────────────
-# AUTOMATION 6: Auto-arm when you leave home
+# AUTOMATION 6: Time-of-day auto-arm (10 PM)
+# Only arms if maintenance mode is OFF
 # ─────────────────────────────────────────
-  - alias: "Car Alarm - Auto Arm on Departure"
-    id: car_alarm_auto_arm
+  - alias: "Car Alarm - Scheduled Arm 10PM"
+    id: car_alarm_scheduled_arm
     mode: single
     trigger:
-      - platform: state
-        entity_id: person.your_name  # adjust to your person entity
-        to: "not_home"
+      - platform: time
+        at: "22:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.car_alarm_maintenance
+        state: "off"
     action:
       - service: input_boolean.turn_on
         target:
@@ -168,18 +172,21 @@ automation:
       - service: notify.mobile_app_your_phone
         data:
           title: "Car Alarm Armed"
-          message: "Vehicle security armed automatically"
+          message: "Scheduled arm — 10 PM nightly window active"
 
 # ─────────────────────────────────────────
-# AUTOMATION 7: Auto-disarm when you arrive home
+# AUTOMATION 7: Time-of-day auto-disarm (6 AM)
 # ─────────────────────────────────────────
-  - alias: "Car Alarm - Auto Disarm on Arrival"
-    id: car_alarm_auto_disarm
+  - alias: "Car Alarm - Scheduled Disarm 6AM"
+    id: car_alarm_scheduled_disarm
     mode: single
     trigger:
-      - platform: state
-        entity_id: person.your_name  # adjust to your person entity
-        to: "home"
+      - platform: time
+        at: "06:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.car_alarm_maintenance
+        state: "off"
     action:
       - service: input_boolean.turn_off
         target:
@@ -187,4 +194,115 @@ automation:
       - service: notify.mobile_app_your_phone
         data:
           title: "Car Alarm Disarmed"
-          message: "Welcome home — vehicle security disarmed"
+          message: "Scheduled disarm — 6 AM window ended"
+
+# ─────────────────────────────────────────
+# AUTOMATION 8: Maintenance mode ON
+# Disarms alarm, notifies, starts hourly auto-recovery watch
+# ─────────────────────────────────────────
+  - alias: "Car Alarm - Maintenance Mode Activated"
+    id: car_alarm_maintenance_on
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.car_alarm_maintenance
+        to: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.car_alarm_armed
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "Car Alarm - Maintenance Mode ON"
+          message: >
+            Alarm disarmed for maintenance. Auto-recovery check every hour.
+            System will warn if maintenance is still on overnight.
+          data:
+            actions:
+              - action: CLEAR_MAINTENANCE
+                title: Clear Maintenance Now
+
+# ─────────────────────────────────────────
+# AUTOMATION 9: Maintenance mode OFF — rearm immediately
+# ─────────────────────────────────────────
+  - alias: "Car Alarm - Maintenance Mode Cleared"
+    id: car_alarm_maintenance_off
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.car_alarm_maintenance
+        to: "off"
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.car_alarm_armed
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "Car Alarm - Maintenance Cleared"
+          message: "Maintenance mode off — alarm rearmed"
+
+# ─────────────────────────────────────────
+# AUTOMATION 10: Hourly auto-recovery check
+# Warns if maintenance is still on during the 10PM-6AM armed window
+# Does NOT force rearm — gives you the choice via notification action
+# ─────────────────────────────────────────
+  - alias: "Car Alarm - Maintenance Overnight Warning"
+    id: car_alarm_maintenance_overnight_warning
+    mode: single
+    trigger:
+      - platform: time_pattern
+        hours: "/1"
+    condition:
+      - condition: state
+        entity_id: input_boolean.car_alarm_maintenance
+        state: "on"
+      - condition: time
+        after: "22:00:00"
+        before: "06:00:00"
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "Car Alarm Still in Maintenance"
+          message: >
+            Maintenance mode has been on since
+            {{ states.input_boolean.car_alarm_maintenance.last_changed | as_timestamp | timestamp_custom('%I:%M %p') }}.
+            The alarm is DISARMED overnight.
+          data:
+            ttl: 0
+            priority: high
+            actions:
+              - action: CLEAR_MAINTENANCE
+                title: Rearm Now
+              - action: IGNORE_MAINTENANCE
+                title: Keep Disabled
+
+# ─────────────────────────────────────────
+# AUTOMATION 11: Mobile action — clear maintenance from notification
+# ─────────────────────────────────────────
+  - alias: "Car Alarm - Mobile Clear Maintenance"
+    id: car_alarm_mobile_clear_maintenance
+    mode: single
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: CLEAR_MAINTENANCE
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.car_alarm_maintenance
+
+# ═══════════════════════════════════════════════════════════════════
+# HELPERS REQUIRED
+# Add via Settings > Devices & Services > Helpers > Create Helper
+# OR paste under input_boolean: in configuration.yaml
+# ═══════════════════════════════════════════════════════════════════
+
+input_boolean:
+  car_alarm_armed:
+    name: Car Alarm Armed
+    icon: mdi:car-lock
+
+  car_alarm_maintenance:
+    name: Car Alarm Maintenance Mode
+    icon: mdi:wrench
