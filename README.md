@@ -1,4 +1,4 @@
-# 🚨 ESP32 Security System — Home Assistant Distributed Alarm System (Sensor, Siren & Kill Switch)
+# 🚨 ESP32 Security System — Home Assistant Distributed Alarm System
 
 <p align="center">
   <img src="esp32alarm.png" width="800" alt="PNWC Car Alarm Project Collage">
@@ -10,99 +10,91 @@ A professional-grade, distributed vehicle security system. This project bridges 
 
 ## 🏗️ System Architecture
 
-1.  **The Sensor (Car Unit):** A LILYGO T-Display S3 with **LD2410C Human Presence Radar** and an **SW-420 Vibration Sensor**. Optimized for deep sleep, waking instantly on physical disturbance.
+1.  **The Sensor (Car Unit):** A **LILYGO T-Display S3** with **LD2410C Human Presence Radar** and an **SW-420 Vibration Sensor**. Automatically charges via a switched USB source; enters deep sleep 30 seconds after the car is parked to preserve LiPo health.
 2.  **The Brain (Home Assistant):** Manages global logic, time-of-day scheduling, and **Frigate NVR** camera integration.
-3.  **The Alarm (House Unit):** A second T-Display S3 controlling a **12V DC Siren** via a 5V Relay. Features a hardwired "Wall Kill" button for emergency local control.
+3.  **The Alarm (House Unit):** A headless **ESP32-WROOM-32** controlling a **12V DC Siren** via a 5V Relay. Features a high-reliability hardwired "Wall Kill" button.
 
 ---
 
 ## 🛒 Parts List & Shopping Links
 
-To build your own **ESP32 -> Home Assistant, Security System**, you will need the following components. These links represent the specific hardware used in the circuit designs.
-
-### 🚗 Unit 1: Car Sensor (Presence & Vibration Sensor)
+### 🚗 Unit 1: Car Sensor (Presence & Vibration)
 * **ESP32 Microcontroller:** [LILYGO T-Display S3](https://a.co/d/0gzxxSAu) (Dual-core ESP32-S3 with 1.9" LCD)
-* **Presence Sensor:** [LD2410C mmWave Radar](https://a.co/d/06LWMXAf) (Human presence detection)
-* **Vibration Sensor:** [SW-420 Motion Sensor](https://a.co/d/02E32HKW) (Shock/Vibration trigger)
-* **LiPo Battery:** [3.7V 2000mAh LiPo Battery](https://a.co/d/0hEXVDKv) (JST 1.25mm connector)
+* **Presence Sensor:** [LD2410C mmWave Radar](https://a.co/d/06LWMXAf) 
+* **Vibration Sensor:** [SW-420 Motion Sensor](https://a.co/d/02E32HKW)
+* **LiPo Battery:** [3.7V 2000mAh LiPo Battery](https://a.co/d/0hEXVDKv) (JST 1.25mm)
+* **Car Power Interface:** [12V to USB-C Step-Down Converter (Hardwired)](https://a.co/d/03p8YRCy) OR [Low-Profile Cigarette Lighter USB Adapter](https://a.co/d/03B6qD6h)
+* **USB Cable:** [90-Degree Right Angle USB-C Cable](https://a.co/d/06fP6O8w)
 
-### 🏠 Unit 2: House Siren (Siren Wall Powered/Relay Controlled)
-* **ESP32 Microcontroller:** [ESP32-WROOM-32 DevKit](https://a.co/d/05z59KT6) (Standard 30-pin version)
-* **5V Relay:** [5V One-Channel Relay Module](https://a.co/d/0aWROudj) (Opto-isolated High/Low trigger)
-* **12V Siren:** [12V DC Wired Indoor/Outdoor Siren](https://a.co/d/06rncyCy) (High-decibel output)
-* **Siren Power:** [12V 2A DC Power Supply Adapter](https://a.co/d/0imZnCsy) (Mains to 12V for the siren)
-* * **Siren Kill Switch:** [Push Button Switch](https://a.co/d/031p9keo) (For the "Wall Kill" extension)
+### 🏠 Unit 2: House Siren (Relay Controlled)
+* **ESP32 Microcontroller:** [ESP32-WROOM-32 DevKit](https://a.co/d/05z59KT6) (Standard 30-pin)
+* **5V Relay:** [5V One-Channel Relay Module](https://a.co/d/0aWROudj) (Opto-isolated)
+* **12V Siren:** [12V DC Wired Indoor/Outdoor Siren](https://a.co/d/06rncyCy)
+* **Siren Power:** [12V 2A DC Power Supply Adapter](https://a.co/d/0imZnCsy)
+* **Siren Kill Switch:** [Push Button Switch](https://a.co/d/031p9keo) (For "Wall Kill" extension)
 
-### 🛠️ Tooling Requirements
-* **Soldering:** Basic iron and solder for connecting sensors to pins.
-* **Wiring:** [22AWG](https://a.co/d/0aoN3zOD) wire or standard doorbell wire if/where needed.
-* **Software:** [Home Assistant](https://www.home-assistant.io/) instance with the **ESPHome** add-on installed.
-* **Zigbee Gateway:** [SONOFF Zigbee 3.0 USB Dongle](https://a.co/d/08299SBs) universal wireless Zigbee USB adapter with antenna for Home Assistant.
-* **Zigbee, Thread or Matter Gateway:** [Home Assistant Connect ZB-2](https://a.co/d/0iVhmzxv) provides the best possible connection to Zigbee or Thread devices for Home Assistant.
-
----
-
-## 📂 Repository Structure
-
-* `car_security_tdisplay_s3.yaml`: Sensor unit config (Vibration + Radar + Battery Mgmt).
-* `house_siren_tdisplay_s3.yaml`: Siren controller with status display and hardwired button logic.
-* `ha_automations.yaml`: Global logic, notifications, and camera triggers.
-* `zigbee_kill_button.yaml`: Optional automation for remote Zigbee-based silencing.
+### 🛠️ Tooling & Connectivity
+* **Software:** [Home Assistant](https://www.home-assistant.io/) with **ESPHome** add-on.
+* **Zigbee Gateway:** [SONOFF Zigbee 3.0 USB Dongle](https://a.co/d/08299SBs) OR [Home Assistant Connect ZB-2](https://a.co/d/0iVhmzxv).
+* **Wiring:** [22AWG Hook-up Wire](https://a.co/d/0aoN3zOD).
 
 ---
 
-## 🛠️ 3D Enclosure & Mounting Designs
+## 🔌 Master Wiring Reference
 
-The system requires specific mounting to ensure sensor accuracy and weather resistance. 
+> ⚠️ **Note:** The House Siren pins have been moved to "Safe Pins" (GPIO 13/14) to prevent the WROOM-32 from entering a boot-loop or strapping pin error.
 
-<p align="center">
-  <img src="alarm_3d_case_designs.svg" width="800" alt="3D Enclosure Blueprints">
-</p>
-
-### Enclosure Specifications
-
-| Feature | Car Sensor Unit | House Siren Unit |
+### 🏠 Unit 2: House Siren (WROOM-32 DevKit)
+| Component | ESP32 Pin | Logic / Notes |
 | :--- | :--- | :--- |
-| **Material** | PETG (Heat tolerant for car interiors) | ASA (UV & Weather stable for outdoors) |
-| **Infill** | 25% Gyroid | 40% Gyroid |
-| **Mounting** | Under-seat rail / Hook tabs | M6 Concrete Anchors |
-| **Hardware** | M3 Heat-set inserts x 4 | M3 Heat-set / M6 Bolts |
+| **Relay VCC** | **5V / VIN** | Powers the relay coil |
+| **Relay GND** | **GND** | Common ground |
+| **Relay IN** | **GPIO 13** | Trigger (Safe pin) |
+| **Wall Kill Button** | **GPIO 14** | Connect to GND to trigger |
+| **Status LED** | **GPIO 2** | Internal Blue LED (Pulses on Alarm) |
 
-**Design Note:** The outdoor siren bracket includes a built-in **15° down-tilt** to maximize audio projection toward the driveway and prevent water ingress.
+### 🚗 Unit 1: Car Sensor (LILYGO T-Display S3)
+| Component | ESP32 Pin | Logic / Notes |
+| :--- | :--- | :--- |
+| **Vibration (SW-420)** | **GPIO 1** | **Hardware Wake-up Pin** |
+| **Radar TX (LD2410)** | **GPIO 3** | ESP RX ← Sensor TX |
+| **Radar RX (LD2410)** | **GPIO 2** | ESP TX → Sensor RX |
+| **Battery Voltage** | **GPIO 4** | 100k/100k Voltage Divider |
+| **USB Power Sense** | **GPIO 43** | **Internal** (Auto-Sleep Logic) |
+| **LCD Backlight** | **GPIO 38** | **Internal** (Screen Dimming) |
 
 ---
 
 ## 🤖 Advanced Features
 
-### 📅 Smart Scheduling & Routines
-* **Time-of-Day Arming:** Automatically arm via HA `schedule` helpers (e.g., 10 PM – 6 AM).
-* **Manual Override:** A 'Disable' feature for maintenance that includes an **Auto-Recovery** check every hour to ensure the system is never accidentally left off overnight.
-
-### 📡 Detection Logic
-* **mmWave Radar:** Distinguishes between environmental vibration (wind/cats) and actual human presence inside or near the cabin.
-* **Intelligent Power:** Car unit remains in deep sleep until the SW-420 triggers a hardware wake-up.
+### 📡 Intelligent Power Management
+The Car Unit is designed for **Zero-Maintenance Operation**:
+* **Ignition Sync:** When the car starts, USB power is detected (GPIO43), deep sleep is disabled, and the battery begins charging.
+* **Parked Security:** 30 seconds after the car is turned off, the unit enters Deep Sleep. It remains dormant until the SW-420 vibration sensor triggers a hardware wake-up.
 
 ### 🔘 Triple-Layer Kill Switch
-1. **Local:** Top/Bottom buttons on the House Unit display.
-2. **Hardwired:** GPIO13 "Wall Kill" button (doorbell wire extension).
-3. **Mobile:** Actionable notifications on the Home Assistant app.
+1. **Local:** On-board status LED and software logic.
+2. **Hardwired:** GPIO14 "Wall Kill" button (WROOM-32 unit).
+3. **Mobile:** Actionable notifications via Home Assistant.
 
 ---
 
-## 🔌 Hardware & Wiring
+## 🧪 Testing & Commissioning
 
-### 🏠 House Siren Unit (Unit 2)
-* **Relay IN:** GPIO12
-* **Wall Kill Button:** GPIO13 ➔ GND (Internal Pullup)
-* **Status Display:** Built-in ST7789 (`invert: true` enabled in YAML)
+### 1. Sensor Calibration
+* **Radar (LD2410C):** Tune Gate Sensitivity in ESPHome so movement outside the glass is ignored.
+* **Vibration (SW-420):** Adjust the onboard potentiometer clockwise to prevent heavy rain from triggering the alarm.
 
-### 🚗 Car Sensor Unit (Unit 1)
-* **SW-420 (Wake):** GPIO1
-* **LD2410C TX/RX:** GPIO3 / GPIO2
-* **Battery ADC:** GPIO4 (100k/100k Voltage Divider)
+### 2. Power Logic Verification
+* **USB Detect:** Plug in USB-C; verify logs show `USB Power Connected - Disabling Deep Sleep`.
+* **Sleep Entry:** Unplug USB-C; screen should turn off after 30 seconds.
+* **Wake Trigger:** Shake the device while unplugged; it should boot and connect to WiFi immediately.
+
+### 3. Siren Safety Check
+* **Relay Logic:** Listen for the physical *click* of the relay when toggling the switch in HA.
+* **Auto-Timeout:** Trigger the siren and verify it shuts off automatically after 60 seconds.
 
 ---
 
 ## ⚠️ Safety Note
-The house unit switches **12V DC only**. Do not attempt to switch mains AC (120V/240V) directly with the relay modules provided in this project.
-**
+The house unit switches **12V DC only**. Do not attempt to switch mains AC (120V/240V) directly with the relay modules provided in this project. All 12V power should be fused appropriately.
