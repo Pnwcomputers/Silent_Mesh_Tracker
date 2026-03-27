@@ -1,14 +1,16 @@
 # ═══════════════════════════════════════════════════════════════════
 # PNWC CAR SECURITY — UPGRADED CELLULAR/GPS EDITION
-# Board: LILYGO T-SIM7670G-S3 | Logic: WiFi + LTE + GPS + Radar
+# Hardware: LILYGO T-SIM7670G-S3
 # ═══════════════════════════════════════════════════════════════════
 
 esphome:
   name: car-security-upgraded
+  friendly_name: Car Security Pro
   on_boot:
     priority: 600
     then:
       - pmu.axp2101.set_vbus_limit: 500mA
+      - script.execute: stealth_mode
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -22,6 +24,7 @@ wifi:
     - ssid: "Your_WiFi"
       password: "Your_Password"
 
+# --- Power & Modem Hardware ---
 i2c:
   sda: GPIO12
   scl: GPIO11
@@ -49,25 +52,36 @@ binary_sensor:
     id: car_vibration
     name: "Car Vibration"
     device_class: vibration
-  
+    on_press:
+      then:
+        - script.execute: alert_logic
+
   - platform: ld2410
     has_target:
       name: "Car Presence"
       id: car_presence
+      on_press:
+        then:
+          - script.execute: alert_logic
 
 # --- Cellular & GPS ---
 sim7000:
   id: modem
   uart_id: modem_uart
   pwr_key_pin: GPIO13
-  apn: "your_apn"
+  apn: "hologram" # Update to your APN
   gps:
     latitude: { id: car_lat }
     longitude: { id: car_lon }
 
-# --- Automation Logic ---
+# --- Intelligent Alert Logic ---
 script:
-  - id: alert_sequence
+  - id: stealth_mode
+    then:
+      - sim7000.send_at_command: "AT+CNETLIGHT=0"
+      - logger.log: "🌑 Stealth Mode Active (LEDs Off)"
+
+  - id: alert_logic
     mode: single
     then:
       - if:
@@ -76,16 +90,17 @@ script:
           then:
             - logger.log: "WiFi OK: Alerting Home Assistant"
           else:
-            - logger.log: "WiFi DOWN: Sending Emergency SMS"
+            - logger.log: "WiFi JAMMED/OUT OF RANGE: Sending LTE SMS"
             - sim7000.send_at_command: "AT+CGNSPWR=1"
             - delay: 10s
             - sim7000.send_sms:
-                number: "+15551234567"
+                number: "+15551234567" # UPDATE PHONE
                 message: !lambda |-
-                  return "🚨 ALARM TRIGGERED! Car moved or entered. GPS: " + id(car_lat).state + "," + id(car_lon).state;
+                  return "🚨 PNWC ALARM: WiFi Lost! Car Intrusion/Vibration. GPS: https://maps.google.com/?q=" 
+                         + to_string(id(car_lat).state) + "," + to_string(id(car_lon).state);
 
 sensor:
   - platform: axp2101
     battery_voltage:
-      name: "Battery Voltage"
+      name: "18650 Battery Voltage"
       id: batt_volts
