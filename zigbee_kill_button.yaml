@@ -1,31 +1,42 @@
+# ═══════════════════════════════════════════════════════════════════
+# PNWC CAR SECURITY — ZIGBEE REMOTE KILL SWITCH
+# ═══════════════════════════════════════════════════════════════════
+
 automation:
-  - alias: "Car Alarm - Wall Button Kill"
-    id: car_alarm_wall_button_kill
+  - alias: "Car Alarm - Zigbee Kill Switch"
+    id: car_alarm_zigbee_kill
     mode: single
     trigger:
-      - platform: state
-        entity_id: sensor.aqara_wall_button_action  # adjust to your button entity
-        to: "single"
+      # Common Zigbee button actions (Adjust based on your specific button)
+      - platform: device
+        domain: mqtt
+        device_id: your_zigbee_button_id
+        type: action
+        subtype: single  # Single click to Disarm
     action:
-      - service: switch.turn_off
-        target:
-          entity_id: switch.house_siren_siren_relay
+      # 1. Disarm the System
       - service: input_boolean.turn_off
         target:
           entity_id: input_boolean.car_alarm_armed
+      
+      # 2. Kill the House Siren (Unit 2)
+      - service: switch.turn_off
+        target:
+          entity_id: switch.house_siren_siren_relay
+          
+      # 3. Notify Mobile that system was killed physically
       - service: notify.mobile_app_your_phone
         data:
-          title: "Car Alarm Killed"
-          message: "Alarm silenced via wall button at {{ now().strftime('%H:%M:%S') }}"
-```
+          title: "🛑 Alarm Disarmed Locally"
+          message: "Zigbee Kill-Switch pressed. Siren silenced."
 
----
-
-### B) Hardwired Button to Siren Unit (Cleanest)
-
-Add a physical momentary button wired to **GPIO13** on the house siren T-Display S3. This keeps everything on one device with no Zigbee dependency.
-
-**Wiring:**
-```
-GPIO13 → one leg of momentary button
-GND    → other leg of momentary button
+  - alias: "Car Alarm - Zigbee Panic Trigger"
+    id: car_alarm_zigbee_panic
+    trigger:
+      - platform: device
+        domain: mqtt
+        device_id: your_zigbee_button_id
+        type: action
+        subtype: double  # Double click to Panic
+    action:
+      - service: esphome.house_siren_trigger_alarm
